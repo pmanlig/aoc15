@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+
 function md5cycle(x, k) {
 	var a = x[0], b = x[1], c = x[2], d = x[3];
 
@@ -181,3 +183,5 @@ if (md5('hello') !== '5d41402abc4b2a76b9719d911017c592') {
 		return (msw << 16) | (lsw & 0xFFFF);
 	}
 }
+
+/* eslint-disable no-unused-vars */
