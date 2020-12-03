@@ -1,4 +1,4 @@
-import React, { createContext } from 'react';
+import React from 'react';
 import Solver from './Solver';
 
 class Grid {
@@ -28,9 +28,9 @@ class MonoGrid extends Grid {
 
 	drawTo(canvas) {
 		let ctx = canvas.getContext("2d");
-		ctx.fillStyle = "#FFFFFF";
-		ctx.fillRect(0, 0, 1000, 1000);
 		ctx.fillStyle = "#000000";
+		ctx.fillRect(0, 0, 1000, 1000);
+		ctx.fillStyle = "#FFFFFF";
 		for (let y = 0; y < 1000; y++) {
 			for (let x = 0; x < 1000; x++) {
 				if (this.data[y][x] === 1) { ctx.fillRect(x, y, 1, 1); }
@@ -72,9 +72,9 @@ class Command {
 		c = c.split(' ');
 		if (c.length === 5) c.shift();
 		this.cmd = c[0];
-		if (c[0] === "toggle") { this.op = (g, x, y) => g.toggle(x, y); }
-		else if (c[0] === "off") { this.op = (g, x, y) => g.off(x, y); }
-		else if (c[0] === "on") { this.op = (g, x, y) => g.on(x, y); }
+		if (c[0] === "toggle") { this.op = (g, x, y) => g.toggle(x, y); this.drawTo = this.toggle; }
+		else if (c[0] === "off") { this.op = (g, x, y) => g.off(x, y); this.drawTo = this.off; }
+		else if (c[0] === "on") { this.op = (g, x, y) => g.on(x, y); this.drawTo = this.on; }
 		this.from = new Coordinate(c[1]);
 		this.to = new Coordinate(c[3]);
 	}
@@ -85,6 +85,25 @@ class Command {
 				this.op(g, x, y);
 			}
 		}
+	}
+
+	draw(canvas, color) {
+		let ctx = canvas.getContext("2d");
+		ctx.fillStyle = color;
+		ctx.fillRect(this.from.x, this.from.y, this.to.x - this.from.x + 1, this.to.y - this.from.y + 1);
+	}
+
+	on(canvas) { this.draw(canvas, "#FFFFFF"); }
+	off(canvas) { this.draw(canvas, "#000000"); }
+
+	toggle(canvas) {
+		let ctx = canvas.getContext("2d");
+		let img = ctx.getImageData(this.from.x, this.from.y, this.to.x - this.from.x + 1, this.to.y - this.from.y + 1);
+		for (let i = 0; i < img.data.length; i++) {
+			img.data[i] = 255 - img.data[i];
+			if (i % 4 === 3) img.data[i] = 255;
+		}
+		ctx.putImageData(img, this.from.x, this.from.y);
 	}
 }
 
@@ -101,13 +120,17 @@ export class S6a extends Solver {
 		input[i].exec(this.mono);
 		input[i].exec(this.col);
 		this.setState({ instruction: i + 1 });
-		this.mono.drawTo(this.canvas.current);
+		// if (i % 10 === 9) { input[i].drawTo(this.canvas.current); }
+		input[i].drawTo(this.canvas.current);
 		setTimeout(() => this.process(input, i + 1), 1);
 	}
 
 	solve(input) {
 		input = input.split('\n').map(c => new Command(c));
 		this.setState({ input: input });
+		let ctx = this.canvas.current.getContext("2d");
+		ctx.fillStyle = "#000000";
+		ctx.fillRect(0, 0, 1000, 1000);
 		setTimeout(() => this.process(input, 0), 1);
 	}
 
