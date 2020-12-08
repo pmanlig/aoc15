@@ -12,7 +12,6 @@ export class S8a extends Solver {
 
 export class S8b extends Solver {
 	solve(input) {
-		let i = 0;
 		let enc = input.split('\n').map(l => {
 			l = l.replace(/\\/g, "\\\\");
 			l = l.replace(/"/g, "\\\"");
