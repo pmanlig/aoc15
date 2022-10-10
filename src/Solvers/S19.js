@@ -64,55 +64,33 @@ class Search {
 }
 
 export class S19a extends Solver {
-	reverseOperate(search, rules, seen) {
-		let b = 0;
-		for (let i = 1; i < search.length; i++) {
-			if (search[i].data.length < search[b].data.length ||
-				(search[i].data.length === search[b].data.length && search[i].steps < search[b].steps)) {
-				b = i;
-			}
-		}
-		let data = search[b].data, steps = search[b].steps;
-		search.splice(b, 1);
-		if (data !== "e") {
-			if (!seen.has(data)) {
-				seen.add(data);
-				for (let i = 0; i < data.length; i++) {
-					for (let j = 0; j < rules.length; j++) {
-						let l = rules[j][1].length;
-						if (i + l - 1 < data.length) {
-							if (data.slice(i, i + l) === rules[j][1]) {
-								let n = data.slice(0, i) + rules[j][0] + data.slice(i + l);
-								search = search.filter(r => r.data !== n);
-								search.push({ steps: steps + 1, data: n });
-							}
-						}
-					}
+	calibrate(mol, rules) {
+		let calibration = [];
+		let atoms = mol.match(molEx);
+		atoms.forEach((a, i) => {
+			rules.forEach(r => {
+				if (a === r[0]) {
+					let cpy = [...atoms];
+					cpy[i] = r[1];
+					cpy = cpy.join('');
+					if (!calibration.some(m => m === cpy)) { calibration.push(cpy); }
 				}
-			}
-			setTimeout(() => { this.reverseOperate(search, rules, seen) }, 1);
-		}
-		this.setState({ molecule: data, steps: steps });
+			});
+		});
+		return calibration;
 	}
-
+	
 	solve(input) {
 		// input = "H => HO\nH => OH\nO => HH\n\nHOH";
 		// input = "H => HO\nH => OH\nO => HH\n\nHOHOHO";
 		input = input.split('\n');
 		let mol = input[input.length - 1];
 		let rules = input.slice(0, -2).map(s => /(\w+) => (\w+)/.exec(s).slice(1));
-		let calibration = new State(mol, 0).generate(rules);
+		let calibration = this.calibrate(mol, rules);
+		new State(mol, 0).generate(rules);
 		let search = new Search(new State(mol, 0), "e");
 		let reaction = search.find(rules);
 		this.setState({ calibration: calibration.length, steps: reaction.steps, molecule: reaction.mol });
-		/*
-		let ruledata = rules.map(r => ({ from: r[0], to: r[1].match(molEx) }));
-		let atoms = new Set(ruledata.flatMap(r => r.to));
-		let uniqueAtoms = [...atoms].filter(a => !rules.some(r => r[0] === a));
-		uniqueAtoms = uniqueAtoms.map(u => ({ atom: u, rules: ruledata.filter(r => r.to.some(a => a === u)).length }));
-		console.log(uniqueAtoms);
-		*/
-		// setTimeout(() => { this.reverseOperate([{ steps: 0, data: mol }], rules, new Set()); }, 1);
 	}
 
 	customRender() {
