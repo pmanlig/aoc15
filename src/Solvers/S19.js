@@ -1,22 +1,69 @@
 // import React from 'react';
 import Solver from './Solver';
 
-export class S19a extends Solver {
-	operate(mol, rules, result) {
-		result = result || new Set();
-		for (let i = 0; i < mol.length; i++) {
-			for (let j = 0; j < rules.length; j++) {
-				let l = rules[j][0].length;
-				if (i + l - 1 < mol.length) {
-					if (mol.slice(i, i + l) === rules[j][0]) {
-						result.add(mol.slice(0, i) + rules[j][1] + mol.slice(i + l));
-					}
-				}
-			}
-		}
-		return result;
+const molEx = /(e|[A-Z][a-z]?)/g;
+
+class State {
+	constructor(mol, steps) {
+		this.mol = mol;
+		this.steps = steps;
 	}
 
+	generate(rules) {
+		let moves = [];
+		rules.forEach(r => {
+			let matches = [...this.mol.matchAll(new RegExp(r[1], "g"))].map(a => a.index);
+			matches.forEach(m => {
+				moves.push(new State(this.mol.substr(0, m) + r[0] + this.mol.substr(m + r[1].length), this.steps + 1));
+			});
+		});
+		/*
+		atoms.forEach((a, i) => {
+			rules.forEach(r => {
+				if (r[0] === a) {
+					let cpy = [...atoms];
+					cpy[i] = r[1];
+					let newMol = cpy.join('');
+					if (!moves.some(m => m.mol === newMol)) { moves.push(new State(newMol, this.steps + 1)) }
+				}
+			});
+		});
+		*/
+		return moves;
+	}
+}
+
+class Search {
+	constructor(initial, target) {
+		this.queue = [initial];
+		this.target = target;
+		this.targetAtoms = target.match(molEx);
+		initial.matches = this.compare(initial.mol);
+	}
+
+	compare(mol) {
+		let atoms = mol.match(molEx);
+		for (let i = 0; i < atoms.length; i++) {
+			if (atoms[i] !== this.targetAtoms[i]) { return i; }
+		}
+		return atoms.length;
+	}
+
+	find(rules) {
+		let sorter = (a, b) => b.mol.length - a.mol.length;
+		let pot = this.queue.pop();
+		while (pot.mol !== this.target) {
+			let mv = pot.generate(rules);
+			// mv.forEach(m => m.matches = this.compare(m.mol))
+			this.queue = this.queue.concat(mv);
+			this.queue.sort(sorter);
+			pot = this.queue.pop();
+		}
+		return pot;
+	}
+}
+
+export class S19a extends Solver {
 	reverseOperate(search, rules, seen) {
 		let b = 0;
 		for (let i = 1; i < search.length; i++) {
@@ -53,18 +100,25 @@ export class S19a extends Solver {
 		// input = "H => HO\nH => OH\nO => HH\n\nHOHOHO";
 		input = input.split('\n');
 		let mol = input[input.length - 1];
-		let rules = input.slice(0, -2).map(s => /(\w+) => (\w+)/.exec(s).slice(1, 3));
-		let result = this.operate(mol, rules);
-		this.setState({ calibration: result.size, steps: 0, molecule: mol });
-		setTimeout(() => { this.reverseOperate([{ steps: 0, data: mol }], rules, new Set()); }, 1);
+		let rules = input.slice(0, -2).map(s => /(\w+) => (\w+)/.exec(s).slice(1));
+		let calibration = new State(mol, 0).generate(rules);
+		let search = new Search(new State(mol, 0), "e");
+		let reaction = search.find(rules);
+		this.setState({ calibration: calibration.length, steps: reaction.steps, molecule: reaction.mol });
+		/*
+		let ruledata = rules.map(r => ({ from: r[0], to: r[1].match(molEx) }));
+		let atoms = new Set(ruledata.flatMap(r => r.to));
+		let uniqueAtoms = [...atoms].filter(a => !rules.some(r => r[0] === a));
+		uniqueAtoms = uniqueAtoms.map(u => ({ atom: u, rules: ruledata.filter(r => r.to.some(a => a === u)).length }));
+		console.log(uniqueAtoms);
+		*/
+		// setTimeout(() => { this.reverseOperate([{ steps: 0, data: mol }], rules, new Set()); }, 1);
 	}
 
 	customRender() {
 		return <div>
 			<p>Calibration: {this.state.calibration}</p>
-			<p>Best sequence: {this.state.steps}</p>
-			<p>Current sequence: {this.state.molecule}</p>
-			<p>Current length: {this.state.molecule.length}</p>
+			<p>Shortest sequence: {this.state.steps}</p>
 		</div>;
 	}
 }
