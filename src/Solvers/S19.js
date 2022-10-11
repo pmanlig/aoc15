@@ -17,18 +17,6 @@ class State {
 				moves.push(new State(this.mol.substr(0, m) + r[0] + this.mol.substr(m + r[1].length), this.steps + 1));
 			});
 		});
-		/*
-		atoms.forEach((a, i) => {
-			rules.forEach(r => {
-				if (r[0] === a) {
-					let cpy = [...atoms];
-					cpy[i] = r[1];
-					let newMol = cpy.join('');
-					if (!moves.some(m => m.mol === newMol)) { moves.push(new State(newMol, this.steps + 1)) }
-				}
-			});
-		});
-		*/
 		return moves;
 	}
 }
@@ -41,20 +29,11 @@ class Search {
 		initial.matches = this.compare(initial.mol);
 	}
 
-	compare(mol) {
-		let atoms = mol.match(molEx);
-		for (let i = 0; i < atoms.length; i++) {
-			if (atoms[i] !== this.targetAtoms[i]) { return i; }
-		}
-		return atoms.length;
-	}
-
 	find(rules) {
 		let sorter = (a, b) => b.mol.length - a.mol.length;
 		let pot = this.queue.pop();
 		while (pot.mol !== this.target) {
 			let mv = pot.generate(rules);
-			// mv.forEach(m => m.matches = this.compare(m.mol))
 			this.queue = this.queue.concat(mv);
 			this.queue.sort(sorter);
 			pot = this.queue.pop();
@@ -87,7 +66,6 @@ export class S19a extends Solver {
 		let mol = input[input.length - 1];
 		let rules = input.slice(0, -2).map(s => /(\w+) => (\w+)/.exec(s).slice(1));
 		let calibration = this.calibrate(mol, rules);
-		new State(mol, 0).generate(rules);
 		let search = new Search(new State(mol, 0), "e");
 		let reaction = search.find(rules);
 		this.setState({ calibration: calibration.length, steps: reaction.steps, molecule: reaction.mol });
